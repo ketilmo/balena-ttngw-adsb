@@ -1,0 +1,89 @@
+version: '2.1'
+services:
+  gateway:
+    build:
+      context: ./ttn-resin-gateway-rpi
+    image: ttn-gateway
+    privileged: true
+    network_mode: host
+    restart: always
+    environment:
+      GW_KEY: "${GW_KEY:?Gateway Key is mandatory}"
+      GW_ID: "${GW_ID:?Gateway Id is mandatory}"
+      GW_GPS: "${GW_GPS:-false}"
+      GW_RESET_PIN: "${GW_RESET_PIN:-22}"
+      GW_ANTENNA_GAIN: "${GW_ANTENNA_GAIN:-0}"
+    devices:
+      - "/dev/mem:/dev/mem"
+    volumes:
+      - var_ttn_vol:/var/ttn
+  dump1090-fa:
+    build: ./balena-ads-b/dump1090-fa
+    image: dump1090-fa
+    environment:
+      - LAT=
+      - LON=
+    devices:
+      - "/dev/bus/usb"
+    expose:
+      - "30001"
+      - "30002"
+      - "30003"
+      - "30004"
+      - "30005"
+      - "30104"
+      - "8080"
+    ports:
+      #- "80:8080"
+  piaware:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/piaware
+    image: piaware
+    environment:
+      - FLIGHTAWARE_FEEDER_ID=
+  fr24feed:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/fr24feed
+    image: fr24feed
+    environment:
+      - FR24_KEY=
+  planefinder:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/planefinder
+    image: planefinder
+    ports:
+      - "80:30053"
+# Optional: Uncomment to enable custom mlat server.
+  360radar-mlat-client:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/mlat-client
+    image: mlat-client
+# Optional: 360Radar ADS-B logger.
+  360radar-ads-b:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/360radar-ads-b
+    image: 360radar-ads-b
+# Optional: Uncomment to enable custom mlat server.
+  vrss-mlat-client:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/mlat-client
+    image: mlat-client
+# Optional: VRSS ADS-B logger.
+  vrss-ads-b:
+    depends_on:
+      - dump1090-fa
+    build: ./balena-ads-b/vrss-ads-b
+    image: vrss-ads-b
+
+volumes:
+  var_ttn_vol:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

@@ -1,0 +1,22 @@
+FROM balenalib/%%BALENA_ARCH%%-debian:stretch as run
+
+RUN apt-get update && \
+	apt-get install -y wget supervisor
+
+WORKDIR /tmp
+
+RUN wget http://client.planefinder.net/pfclient_4.1.1_armhf.deb
+RUN dpkg -i pfclient_4.1.1_armhf.deb
+
+ENV RECEIVER_HOST dump1090-fa
+ENV RECEIVER_PORT 30005
+
+EXPOSE 30053
+
+COPY start.sh /
+RUN chmod +x /start.sh
+
+COPY supervisor /etc/supervisor
+COPY fr24feed.ini.tpl /etc
+
+ENTRYPOINT ["/start.sh"]
